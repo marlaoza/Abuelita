@@ -1,46 +1,6 @@
-#include <SPI.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_PCD8544.h>
-#include <Wire.h>
-#include <Preferences.h>
-Preferences preferences;
- 
-//TODO 
 
-// MAIS MINIGAMES/APPS
-// - LER/ESCREVER POEMAS (quando tiver o SD, por enquanto só ler)
-// - TOCA MUSICA (podendo implementar streaming tambem pegar musica do spotify, mas precios de um menu pra logar wifi)
-// - FLAPPY BIRD? (faz sentido)
-
-// IMPLEMENTAR TECLADO
-// - Função de escrever - tecla 1 = abc, tecla 2 = def etc
-// - Capturar input de teclado de forma fácil para poder usar em qualquer momento e qualquer tela/minigame
-
-// IMPLEMENTAR GIROSCOPIO
-// - Mexer o rosto do bixo baseado no giroscopio
-// - shake = ligar flash e enjoo no bixo
-
-// BIXO
-// - status, demonstrar pelo rosto (fome, diversão etc)
-// - mexer a mao que da comida baseado no giroscopio ou no teclado ?
-
-// MENU
-// - opções de minigames e comidas e apps (audios/musicas, texto)
-
-// TEXTO
-// -escrever poeminhas
-
-// AUDIO
-// - Microfone e Speaker (entrada de fone se der)
-// - play musica, o papagaio canta
-// - microfone grava voz e reproduz com um filtrozinho de audio (papagaio repete)
-// - as vezes o papagaio faz uns sons ae
-
-//STORAGE
-// - cartão SD pra guardar mais musicas? 
-
-//ALGUMA COISA PRA FAZER COM WIFI / BLUETOOH
-//streaming de musica hmm.;
 
 
 #define RST_PIN   26 
@@ -100,12 +60,58 @@ Adafruit_PCD8544 display = Adafruit_PCD8544(CLK_PIN, DIN_PIN, DC_PIN, CE_PIN, RS
 //   drawEye(rightEye, true);
 // }
 
-//# TERMO
+//# UTILS
+void drawBitmapRotated(int16_t x, int16_t y,const uint8_t *bitmap,int w, int h, float angle) {
+  float rad = (2*std::numbers::pi*angle)/360;
+  
+  int diag = sqrt(w*w + h*h);
+
+  int sinA = (int)(sin(rad) * 256);
+  int cosA = (int)(cos(rad) * 256);
+
+  int cx_dst = diag / 2;
+  int cy_dst = diag / 2;
+
+  int cx_src = w / 2;
+  int cy_src = h / 2;
+
+  int bytesPerRow = (w + 7) / 8;
+
+  for (int yy = 0; yy < diag; yy++) {
+    for (int xx = 0; xx < diag; xx++) {
+      
+      int rx = (xx - cx_dst);
+      int ry = (yy - cy_dst);
+
+      int px = (int) (cx_src + ((rx * cosA + ry * sinA) >> 8));
+      int py = (int) (cy_src + ((-rx * sinA + ry * cosA) >> 8));
+
+      if (px < 0 || px >= w || py < 0 || py >= h)
+        continue;
+
+      int byteIndex = py * bytesPerRow + (px / 8);
+      int bitIndex  = 7 - (px % 8);
+
+      if (bitmap[byteIndex] & (1 << bitIndex)) {
+        display.drawPixel(x + xx, y + yy, BLACK);
+      }
+
+      
+    }
+  }
+}
+
 void fillStripedRect(int x, int y, int w, int h, uint16_t color) {
   for (int i = 0; i < w; i +=2) {
     display.drawFastVLine(x + i , y, h, color);
   }
 }
+
+//# TERMO
+// TODO
+// criar tela de inicio
+// usar teclado no lugar do serial
+// criar tela de perdeu ou ganhou
 char wordBank[][6] PROGMEM = {
   "termo","teste","carta","linda","festa",
   "amigo","vento","praia","sabor","ponto",
@@ -131,58 +137,50 @@ char wordBank[][6] PROGMEM = {
 };
 
 char targetWord[6];
-char rows[5][5] = { 
-  { ' ', ' ', ' ', ' ', ' ' },
-  { ' ', ' ', ' ', ' ', ' ' },
-  { ' ', ' ', ' ', ' ', ' ' },
-  { ' ', ' ', ' ', ' ', ' ' },
-  { ' ', ' ', ' ', ' ', ' ' },
-};
+
 int curRow = 0;
 int xOffset = 17;
 int yOffset= 2;
 char targetWordFullCopy[6];
-char targetWordSemiCopy[6];
 
-//se tiver uma letra na palavra target e a mesma letra na palavra enviada duas vezes, uma na posição errada e uma na certa, ele vai flagar duas vezes
-//exemplo 
-// target: TESTE
-// enviado: TSSTE
-// ficaria o primeiro S marcado como meio certo e o segundo S marcado como certo, dando a impressão que tem dois s na palavra. (arrumar)
-void drawRow(int row){
+void drawRow(String word, int row){
   strcpy(targetWordFullCopy, targetWord);
-  strcpy(targetWordSemiCopy, targetWord);
   int amtRight = 0;
   int Ypos = (row*9) + yOffset;
+
   for (int col = 0; col < 5; col++){
     int Xpos = (col*11) + xOffset;
-    char curChar = rows[row][col];
-    if(curChar != ' '){
-      bool allRight = (curChar == targetWordFullCopy[col]);
+    if(word[col] != ' '){
+      bool allRight = (word[col] == targetWordFullCopy[col]);
       if(allRight){
         display.fillRect(Xpos, Ypos, 9, 8, BLACK);
+        display.setTextColor(WHITE);
+        display.setCursor(Xpos+2, Ypos);
+        display.print(word[col]);
+        word[col] = ' ';
         targetWordFullCopy[col] = ' ';
-        targetWordSemiCopy[col] = ' ';
         amtRight++;
       }
-      else{
-        char *ptr = strchr(targetWordSemiCopy, curChar);
-        bool letterRight = ptr != NULL;
-        if(letterRight){
-          int index = ptr - targetWordSemiCopy;
-          targetWordSemiCopy[index] = ' ';
-          fillStripedRect(Xpos, Ypos, 9, 8, BLACK);
-        }
-      }
-      display.setTextColor(allRight ? WHITE : BLACK);
-      display.setCursor(Xpos+2, Ypos);
-      display.print(curChar);
-      
-      //ou mover pra depois de todas as rows 
-      display.display();
-
     }
   }
+
+  for (int col = 0; col < 5; col ++){
+    if(word[col] != ' '){
+      int Xpos = (col*11) + xOffset;
+      char *ptr = strchr(targetWordFullCopy, word[col]);
+      bool letterRight = ptr != NULL;
+      if(letterRight){
+          int index = ptr - targetWordFullCopy;
+          targetWordFullCopy[index] = ' ';
+          fillStripedRect(Xpos, Ypos, 9, 8, BLACK);
+      }
+      display.setTextColor(BLACK);
+      display.setCursor(Xpos+2, Ypos);
+      display.print(word[col]);
+    }
+  }
+
+  display.display();
   if(amtRight == 5){
     Serial.println("venceu");
   }
@@ -203,7 +201,6 @@ bool playingTermo;
 
 void setupTermo(){
   strcpy_P(targetWord, wordBank[random(0, sizeof(wordBank) / sizeof(wordBank[0]) - 1 )]);
-  memset(rows, ' ', sizeof(rows));
 
   Serial.println(targetWord);
   curRow = 0;
@@ -219,10 +216,7 @@ void setupTermo(){
       receivedString.trim();
       Serial.println(receivedString);
 
-      for (int i = 0; i < 5; i ++){
-        rows[curRow][i] = receivedString[i];
-      }
-      drawRow(curRow);
+      drawRow(receivedString, curRow);
 
       curRow ++;
       if(curRow == 5){
@@ -233,21 +227,131 @@ void setupTermo(){
   }
 }
 
+//# CARAOUCOROA
+// TODO
+// criar tela de inicio
+// giroscopio gira moeda
+// desenhar moeda
+// animar giro
 
-unsigned int hunger = 0;
-unsigned int age = 0;
+const unsigned char moeda [] PROGMEM = {
+	0x00, 0x0f, 0xff, 0xff, 0xc0, 0x00, 0x00, 0xf0, 0x00, 0x00, 0x3c, 0x00, 0x03, 0x07, 0xff, 0xff, 
+	0x83, 0x80, 0x0c, 0x7f, 0xff, 0xf8, 0xf8, 0x60, 0x11, 0xcf, 0xff, 0xfe, 0x0f, 0x18, 0x27, 0x7f, 
+	0xff, 0xff, 0xe3, 0xc4, 0x4f, 0xff, 0xff, 0xff, 0xf9, 0xf2, 0x9f, 0xff, 0xff, 0xff, 0xff, 0x99, 
+	0xbf, 0xff, 0xff, 0xff, 0xff, 0x8d, 0xbf, 0xff, 0xff, 0xff, 0xff, 0x85, 0xbf, 0xff, 0xff, 0xff, 
+	0xff, 0x05, 0xbf, 0xff, 0xff, 0xff, 0xff, 0x05, 0xbf, 0xff, 0xff, 0xff, 0xff, 0x05, 0xdf, 0xff, 
+	0xff, 0xff, 0xfe, 0x0d, 0xef, 0xff, 0xff, 0xff, 0xfc, 0x3d, 0x77, 0xff, 0xff, 0xff, 0xe0, 0x7b, 
+	0x39, 0xcf, 0xff, 0xff, 0x80, 0xe6, 0x1e, 0x7b, 0xff, 0xfc, 0x03, 0xcc, 0x0f, 0x8e, 0x08, 0x00, 
+	0x3e, 0x78, 0x07, 0xf3, 0xff, 0xff, 0xe0, 0xf0, 0x01, 0xf8, 0x00, 0x00, 0x0f, 0xc0, 0x00, 0x3f, 
+	0xff, 0xff, 0xff, 0x00, 0x00, 0x0f, 0xff, 0xff, 0xf8, 0x00
+};
+const unsigned char moedaCara [] PROGMEM = {
+	0x00, 0x0f, 0xff, 0xff, 0xc0, 0x00, 0x00, 0xf0, 0x00, 0x00, 0x3c, 0x00, 0x03, 0x07, 0xff, 0xff, 
+	0x83, 0x80, 0x0c, 0x7f, 0xff, 0xf8, 0xf8, 0x60, 0x11, 0xcf, 0xff, 0xfe, 0x0f, 0x18, 0x27, 0x7f, 
+	0xff, 0xff, 0xe3, 0xc4, 0x4f, 0xff, 0xff, 0xff, 0xf9, 0xf2, 0x9f, 0xff, 0xff, 0xff, 0xff, 0x99, 
+	0xbf, 0xff, 0xff, 0xff, 0xff, 0x8d, 0xbf, 0xff, 0xff, 0xff, 0xff, 0x85, 0xbf, 0xff, 0xff, 0xff, 
+	0xff, 0x05, 0xbf, 0xff, 0xff, 0xff, 0xff, 0x05, 0xbf, 0xff, 0xff, 0xff, 0xff, 0x05, 0xdf, 0xff, 
+	0xff, 0xff, 0xfe, 0x0d, 0xef, 0xff, 0xff, 0xff, 0xfc, 0x3d, 0x77, 0xff, 0xff, 0xff, 0xe0, 0x7b, 
+	0x39, 0xcf, 0xff, 0xff, 0x80, 0xe6, 0x1e, 0x7b, 0xff, 0xfc, 0x03, 0xcc, 0x0f, 0x8e, 0x08, 0x00, 
+	0x3e, 0x78, 0x07, 0xf3, 0xff, 0xff, 0xe0, 0xf0, 0x01, 0xf8, 0x00, 0x00, 0x0f, 0xc0, 0x00, 0x3f, 
+	0xff, 0xff, 0xff, 0x00, 0x00, 0x0f, 0xff, 0xff, 0xf8, 0x00
+};
+const unsigned char moedaCoroa [] PROGMEM = {
+	0x00, 0x0f, 0xff, 0xff, 0xc0, 0x00, 0x00, 0xf0, 0x00, 0x00, 0x3c, 0x00, 0x03, 0x07, 0xff, 0xff, 
+	0x83, 0x80, 0x0c, 0x7f, 0xff, 0xf8, 0xf8, 0x60, 0x11, 0xcf, 0xff, 0xfe, 0x0f, 0x18, 0x27, 0x7f, 
+	0xff, 0xff, 0xe3, 0xc4, 0x4f, 0xff, 0xff, 0xff, 0xf9, 0xf2, 0x9f, 0xff, 0xff, 0xff, 0xff, 0x99, 
+	0xbf, 0xff, 0xff, 0xff, 0xff, 0x8d, 0xbf, 0xff, 0xff, 0xff, 0xff, 0x85, 0xbf, 0xff, 0xff, 0xff, 
+	0xff, 0x05, 0xbf, 0xff, 0xff, 0xff, 0xff, 0x05, 0xbf, 0xff, 0xff, 0xff, 0xff, 0x05, 0xdf, 0xff, 
+	0xff, 0xff, 0xfe, 0x0d, 0xef, 0xff, 0xff, 0xff, 0xfc, 0x3d, 0x77, 0xff, 0xff, 0xff, 0xe0, 0x7b, 
+	0x39, 0xcf, 0xff, 0xff, 0x80, 0xe6, 0x1e, 0x7b, 0xff, 0xfc, 0x03, 0xcc, 0x0f, 0x8e, 0x08, 0x00, 
+	0x3e, 0x78, 0x07, 0xf3, 0xff, 0xff, 0xe0, 0xf0, 0x01, 0xf8, 0x00, 0x00, 0x0f, 0xc0, 0x00, 0x3f, 
+	0xff, 0xff, 0xff, 0x00, 0x00, 0x0f, 0xff, 0xff, 0xf8, 0x00
+};
+unsigned long flipStartTime = 0;
+unsigned long flipElapsedTime = 0;
+unsigned long flipTime = 3000;
+void setupCoinFlip(){
+  display.clearDisplay();
+  display.drawBitmap(18, 25, moeda, 48, 23, BLACK);
+  display.display();      
+
+  for (int h = 0; h < 10; h++){
+    display.clearDisplay();
+    display.drawBitmap(18, 25 - h, moeda, 48, 23, BLACK);
+    display.display();      
+    delay(40);
+  }
+
+  flipElapsedTime = millis();
+  flipStartTime = flipElapsedTime;
+  while (flipElapsedTime - flipStartTime <= flipTime) {
+    for (int r = 0; r < 360; r+=20) {
+      display.clearDisplay();
+      drawBitmapRotated(16, 0, moeda, 48, 23, r);
+      display.display();      
+      delay(40);
+      flipElapsedTime = millis();
+
+    }
+  }
+
+  flipElapsedTime = millis();
+  flipStartTime = flipElapsedTime;
+  while (flipElapsedTime - flipStartTime <= flipTime) {
+    display.clearDisplay();
+    drawBitmapRotated(16, 0, moeda, 48, 23, 0);
+    display.display();      
+    delay(90);
+    display.clearDisplay();
+    drawBitmapRotated(16, 0, moeda, 48, 23, 15);
+    display.display();      
+    delay(90);
+    display.clearDisplay();
+    drawBitmapRotated(16, 0, moeda, 48, 23, 0);
+    display.display();      
+    delay(90);
+    display.clearDisplay();
+    drawBitmapRotated(16, 0, moeda, 48, 23, 345);
+    display.display();      
+    delay(90);
+    
+    flipElapsedTime = millis();
+
+  }
+
+  for (int h = 0; h < 10; h++){
+    display.clearDisplay();
+    display.drawBitmap(18, 15 + h, moeda, 48, 23, BLACK);
+    display.display();      
+    delay(40);
+  }
+
+  delay(80);
+  display.setTextSize(2);
+  display.setTextColor(BLACK);
+
+
+  //aleatorizar
+  int i = random(0, 2);
+  String text = i == 0 ?  "CARA" : "COROA";
+
+  display.clearDisplay();
+  display.drawBitmap(18, 25, text = i == 0 ? moedaCara : moedaCoroa, 48, 23, BLACK);
+
+  int16_t x1, y1; 
+  uint16_t w, h; 
+  display.getTextBounds(text, 0, 0, &x1, &y1, &w, &h);
+
+  int16_t x = (84 - w) / 2;
+  display.setCursor(x, 2);
+
+  display.print(text);
+  display.display();      
+  
+}
 
 void setup()   {  
   Serial.begin(115200);
-  preferences.begin("status", false);
-
-  hunger = preferences.getUInt("hunger", 100);
-  age = preferences.getUInt("age", 0);
-  preferences.putUInt("hunger", hunger);
-  preferences.putUInt("age", age);
-
-  preferences.end();
-
   display.begin();
 
   display.setContrast(90);
@@ -260,9 +364,10 @@ void setup()   {
   // Eye rightEye = {0, rightPupil, 63, 4};
 
   // drawEyes(rightEye, leftEye);
-  //
-  setupTermo();
-	display.display();
+  //setupWifi();
+  //setupTermo();
+  setupCoinFlip();
+	
   
 
 }
