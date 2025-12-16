@@ -1,7 +1,71 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_PCD8544.h>
+#include <Keypad.h>
+
+//TODO 
+
+// MAIS MINIGAMES/APPS
+// - LER/ESCREVER POEMAS (quando tiver o SD, por enquanto só ler)
+// - TOCA MUSICA (podendo implementar streaming tambem pegar musica do spotify, mas precios de um menu pra logar wifi)
+// - FLAPPY BIRD? (faz sentido)
+// - MOEDA
+// - VELA
+
+// IMPLEMENTAR TECLADO
+// - Função de escrever - tecla 1 = abc, tecla 2 = def etc
+// - Capturar input de teclado de forma fácil para poder usar em qualquer momento e qualquer tela/minigame
+
+// IMPLEMENTAR GIROSCOPIO
+// - Mexer o rosto do bixo baseado no giroscopio
+// - shake = ligar flash e enjoo no bixo
+
+// BIXO
+// - status, demonstrar pelo rosto (fome, diversão etc)
+// - mexer a mao que da comida baseado no giroscopio ou no teclado ?
+
+// MENU
+// - opções de minigames e comidas e apps (audios/musicas, texto)
+
+// TEXTO
+// -escrever poeminhas
+
+// AUDIO
+// - Microfone e Speaker (entrada de fone se der)
+// - play musica, o papagaio canta
+// - microfone grava voz e reproduz com um filtrozinho de audio (papagaio repete)
+// - as vezes o papagaio faz uns sons ae
+
+//STORAGE
+// - cartão SD pra guardar mais musicas? 
 
 
+const byte ROWS = 4;
+const byte COLS = 4;
+
+char hexaKeys[ROWS][COLS] = {
+  {'1','4','7','.'},
+  {'2','5','8','0'},
+  {'3','6','9','B'},
+  {'C','D','E','F'}
+};
+
+const char* t9Map[] = {
+  "0 ",
+  "1",
+  "2abc",
+  "3def",
+  "4ghi",
+  "5jkl",
+  "6mno",
+  "7pqrs",
+  "8tuv",
+  "9wxyz",
+  ".,?!"
+};
+
+byte rowPins[ROWS] = {23, 22, 32, 33}; 
+byte colPins[COLS] = {21, 18, 17, 16};
+Keypad keypad = Keypad( makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS); 
 
 #define RST_PIN   26 
 #define CE_PIN    15
@@ -107,6 +171,58 @@ void fillStripedRect(int x, int y, int w, int h, uint16_t color) {
   }
 }
 
+unsigned long currentTime = 0;
+unsigned long lastPressTime = 0;
+char lastKey = '\0';
+int charIndex = 0;
+char curChar = '\0';
+String inputText = "";
+String sentText = "";
+int maxDigits = -1;
+
+void readKeyBoard(){
+  char key = keypad.getKey();
+  if(key){
+    if(key == 'B'){
+      sentText = inputText;
+      inputText = "";
+      lastPressTime = currentTime;
+    }
+    else if(key == 'F'){
+      if(inputText.length() > 0){
+        inputText.remove(inputText.length() - 1);
+      }
+    }
+    else{
+      int keyIndex = key - '0';
+      int charCount = strlen(t9Map[keyIndex]);
+      if(maxDigits == -1 || charCount < maxDigits){
+        if(key == lastKey && ((currentTime - lastPressTime) < 1000)){
+          charIndex = (charIndex + 1) % charCount;
+          curChar = t9Map[keyIndex][charIndex];
+        }else{
+          charIndex=0;
+          if(curChar != '\0'){
+            inputText += curChar;
+          }
+          curChar = t9Map[keyIndex][0];
+          lastKey = key;
+          lastPressTime = currentTime;
+        }
+      }
+    }
+  }
+
+  if ((currentTime - lastPressTime) > 1000) {
+    if(curChar != '\0'){
+      inputText += curChar;
+      curChar = '\0';
+      lastKey = '\0';
+      charIndex = 0;
+      Serial.println(inputText);
+    }
+  }
+}
 //# TERMO
 // TODO
 // criar tela de inicio
@@ -144,6 +260,7 @@ int yOffset= 2;
 char targetWordFullCopy[6];
 
 void drawRow(String word, int row){
+  Serial.println(word);
   strcpy(targetWordFullCopy, targetWord);
   int amtRight = 0;
   int Ypos = (row*9) + yOffset;
@@ -172,7 +289,10 @@ void drawRow(String word, int row){
       if(letterRight){
           int index = ptr - targetWordFullCopy;
           targetWordFullCopy[index] = ' ';
-          fillStripedRect(Xpos, Ypos, 9, 8, BLACK);
+          display.drawRect(Xpos, Ypos, 9, 8, BLACK);
+      }
+      else{
+        display.fillRect(Xpos, Ypos, 9, 8, WHITE);
       }
       display.setTextColor(BLACK);
       display.setCursor(Xpos+2, Ypos);
@@ -200,29 +320,42 @@ void drawMap() {
 bool playingTermo;
 
 void setupTermo(){
+  Serial.println("Setup Termo");
+
   strcpy_P(targetWord, wordBank[random(0, sizeof(wordBank) / sizeof(wordBank[0]) - 1 )]);
 
-  Serial.println(targetWord);
   curRow = 0;
+  maxDigits = 5;
   
   display.clearDisplay();
   display.setTextSize(1);
   drawMap();
   
   playingTermo = true;
-  while(playingTermo){
-    if(Serial.available() > 0){
-      String receivedString = Serial.readString();
-      receivedString.trim();
-      Serial.println(receivedString);
+}
 
-      drawRow(receivedString, curRow);
-
-      curRow ++;
-      if(curRow == 5){
-        Serial.println("perdeu");
-      }
+void loopTermo(){
+  if(playingTermo){
+    if(sentText != ""){
+      drawRow(sentText, curRow);
+      curRow++;
+      sentText = "";
     }
+
+    else{
+      int Ypos = (curRow*9) + yOffset;
+      for (int col = 0; col < 5; col++){
+        int Xpos = (col*11) + xOffset;
+        display.setCursor(Xpos+2, Ypos);
+        display.print(inputText[col]);
+      }
+      display.display();
+    }
+
+    if(curRow == 5){
+      Serial.println("perdeu");
+    }
+   
 
   }
 }
@@ -268,7 +401,6 @@ const unsigned char moedaCoroa [] PROGMEM = {
 	0xff, 0xff, 0xff, 0x00, 0x00, 0x0f, 0xff, 0xff, 0xf8, 0x00
 };
 unsigned long flipStartTime = 0;
-unsigned long flipElapsedTime = 0;
 unsigned long flipTime = 3000;
 void setupCoinFlip(){
   display.clearDisplay();
@@ -282,22 +414,22 @@ void setupCoinFlip(){
     delay(40);
   }
 
-  flipElapsedTime = millis();
-  flipStartTime = flipElapsedTime;
-  while (flipElapsedTime - flipStartTime <= flipTime) {
+  currentTime = millis();
+  flipStartTime = currentTime;
+  while (currentTime - flipStartTime <= flipTime) {
     for (int r = 0; r < 360; r+=20) {
       display.clearDisplay();
       drawBitmapRotated(16, 0, moeda, 48, 23, r);
       display.display();      
       delay(40);
-      flipElapsedTime = millis();
+      currentTime = millis();
 
     }
   }
 
-  flipElapsedTime = millis();
-  flipStartTime = flipElapsedTime;
-  while (flipElapsedTime - flipStartTime <= flipTime) {
+  currentTime = millis();
+  flipStartTime = currentTime;
+  while (currentTime - flipStartTime <= flipTime) {
     display.clearDisplay();
     drawBitmapRotated(16, 0, moeda, 48, 23, 0);
     display.display();      
@@ -315,7 +447,7 @@ void setupCoinFlip(){
     display.display();      
     delay(90);
     
-    flipElapsedTime = millis();
+    currentTime = millis();
 
   }
 
@@ -336,7 +468,7 @@ void setupCoinFlip(){
   String text = i == 0 ?  "CARA" : "COROA";
 
   display.clearDisplay();
-  display.drawBitmap(18, 25, text = i == 0 ? moedaCara : moedaCoroa, 48, 23, BLACK);
+  display.drawBitmap(18, 25, i == 0 ? moedaCara : moedaCoroa, 48, 23, BLACK);
 
   int16_t x1, y1; 
   uint16_t w, h; 
@@ -350,12 +482,41 @@ void setupCoinFlip(){
   
 }
 
+
+struct activity {
+  String name;
+  void (*pSetup)();
+  void (*pLoop)(); 
+};
+struct activity activities[5];
+activity* curActivity;
+
+
+// void changeActivity(activity* pAct){
+//   curActivity = pAct;
+//   curActivity->pSetup();
+// }
+
 void setup()   {  
   Serial.begin(115200);
   display.begin();
 
   display.setContrast(90);
   display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(BLACK);
+  display.setCursor(0, 0);
+  display.display();
+
+
+  activities[0].name = "TERMO";
+  activities[0].pSetup = setupTermo;
+  activities[0].pLoop = loopTermo;
+
+  curActivity = &activities[0];
+  curActivity->pSetup();
+
+  //changeActivity(&activities[0]);
 
   // Pupil leftPupil = {7, 9};
   // Eye leftEye = {0, leftPupil, 0, 4};
@@ -366,13 +527,15 @@ void setup()   {
   // drawEyes(rightEye, leftEye);
   //setupWifi();
   //setupTermo();
-  setupCoinFlip();
+  //setupCoinFlip();
 	
   
 
 }
 void loop(){
-
+  currentTime = millis();
+  readKeyBoard();
+  curActivity->pLoop();
  
-
+  
 }
