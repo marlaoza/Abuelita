@@ -25,9 +25,6 @@
 //CARA OU COROA
 // Giroscopio para lançar tambem
 
-//TERMO
-// Tela de vitória / derrota e restart
-
 //BARTENDER
 //seleciona ingredientes
 //chacoalha ate barra enxer
@@ -184,30 +181,39 @@ char curChar = '\0';
 String inputText = "";
 String sentText = "";
 int maxDigits = -1;
+int minDigits = 0;
 int keyboardMode = 0;
+
+void resetKeyboardVariables(){
+  keyboardMode = 0;
+  maxDigits = -1;
+  minDigits = 0;
+  inputText = "";
+  sentText = "";
+}
 
 void readKeyBoard(){
   key = keypad.getKey();
   if(key){
     if(key == 'M'){
       Serial.println("ir pro menu");
-      keyboardMode = 0;
-      maxDigits = -1;
+      resetKeyboardVariables();
       curActivity = &activities[0];
       curActivity->pSetup();
     }
     else if(key == 'H'){
       Serial.println("ir pra home");
-      keyboardMode = 0;
-      maxDigits = -1;
+      resetKeyboardVariables();
       curActivity = &activities[1];
       curActivity->pSetup();
     }
     else if(key == 'B'){
       if(keyboardMode == 1){
-        sentText = inputText;
-        inputText = "";
-        lastPressTime = currentTime;
+        if(inputText.length() >= minDigits){
+          sentText = inputText;
+          inputText = "";
+          lastPressTime = currentTime;
+        }
       }
     }
     else if(key == 'F'){
@@ -221,7 +227,7 @@ void readKeyBoard(){
       if(keyboardMode == 1){
         int keyIndex = key - '0';
         int charCount = strlen(t9Map[keyIndex]);
-        if(maxDigits == -1 || charCount < maxDigits){
+        if(maxDigits == -1 || inputText.length() < maxDigits){
           if(key == lastKey && ((currentTime - lastPressTime) < 1000)){
             charIndex = (charIndex + 1) % charCount;
             curChar = t9Map[keyIndex][charIndex];
@@ -443,9 +449,11 @@ void setupTermo(){
   Serial.println("Setup Termo");
 
   strcpy_P(targetWord, wordBank[random(0, sizeof(wordBank) / sizeof(wordBank[0]) - 1 )]);
+  Serial.println(targetWord);
 
   curRow = 0;
   maxDigits = 5;
+  minDigits = 5;
   keyboardMode = 1;
 
   display.clearDisplay();
@@ -454,17 +462,25 @@ void setupTermo(){
   drawMap();
 
   playingTermo = true;
+  won = false;
 }
 
 void drawEndScreen(){
+  display.setTextColor(BLACK);
   display.clearDisplay();
-  display.print("A palavra era: ");
+  display.setCursor(3, 0);
+  display.print("A palavra era");
+  display.setCursor(28, 10);
   display.print(targetWord);
 
   if(won){
-    display.print("Você acertou em " + String(curRow) + "tentativas");
+    display.setCursor(3, 20);
+    display.print("Conseguiu com");
+    display.setCursor(9,30);
+    display.print(String(curRow) + " tentativas");
   }
-  display.print("Aperte qualquer tecla para reiniciar");
+  display.setCursor(5, 40);
+  display.print("5 - reiniciar");
   display.display();
 }
 
@@ -481,6 +497,9 @@ void loopTermo(){
       int Ypos = (curRow*9) + yOffset;
       for (int col = 0; col < 5; col++){
         int Xpos = (col*11) + xOffset;
+        if(inputText[col] == '\0'){
+          display.fillRect(Xpos+1, Ypos+1, 7, 6, WHITE);
+        }
         display.setCursor(Xpos+2, Ypos);
         display.print(inputText[col]);
       }
@@ -1166,9 +1185,7 @@ void loopMenu(){
         else{
           int index = (selectedApp+1) + ((curPage-1) * menuPagesize);
           Serial.println(activities[index].name);
-
-          keyboardMode = 0;
-          maxDigits = -1;
+          resetKeyboardVariables();
           curActivity = &activities[index];
           curActivity->pSetup();
 
