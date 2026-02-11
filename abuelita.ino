@@ -9,7 +9,7 @@
 
 
 //modules declaration
-#define RST_PIN   26
+#define RST_PIN   32
 #define CE_PIN    15
 #define DC_PIN    27
 #define DIN_PIN   13
@@ -25,14 +25,14 @@ char hexaKeys[ROWS][COLS] = {
   {'3','6','9','B'},
   {'H','M','Z','F'}
 };
-byte rowPins[ROWS] = {23, 19, 32, 33};
-byte colPins[COLS] = {4, 18, 17, 16};
+byte rowPins[ROWS] = {33, 25, 26, 4};
+byte colPins[COLS] = {16, 17, 18, 5};
 Keypad keypad = Keypad( makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS);
 
-#define SD_MISO 12
+#define SD_MISO 19
 #define SD_MOSI 13
 #define SD_CLK  14
-#define SD_CS   2
+#define SD_CS   23
 
 SdSpiConfig spiConfig(SD_CS, SHARED_SPI, SD_SCK_MHZ(16), &SPI);
 
@@ -179,7 +179,34 @@ void setupSD() {
 }
 
 //gyro
+
+#define MPU_SDA 21
+#define MPU_SCL 22
 void setupGyro(){
+  Wire.begin(MPU_SDA, MPU_SCL);
+  byte error, address;
+  int nDevices = 0;
+  while(1){
+    for(address = 1; address < 127; address++ ) {
+      Wire.beginTransmission(address);
+      error = Wire.endTransmission();
+
+      if (error == 0) {
+        Serial.print("I2C device found at 0x");
+        if (address < 16) Serial.print("0");
+        Serial.print(address, HEX);
+        Serial.println("  !");
+        nDevices++;
+      }
+    }
+    
+    if (nDevices == 0) Serial.println("No I2C devices found");
+    else Serial.println("done");
+
+    
+    delay(2000);
+  }
+
   while (!mpu.begin()) {
     Serial.println("[GYRO] - ERROR");
     delay(1000);
@@ -191,33 +218,22 @@ sensors_event_t event;
 
 void readGyro(){
   mpu.getAccelerometerSensor()->getEvent(&event);
+
+  Serial.print("Accel X: "); Serial.print(event.acceleration.x); Serial.println(" m/s^2");
+  Serial.print("Accel Y: "); Serial.print(event.acceleration.y); Serial.println(" m/s^2");
+  Serial.print("Accel Z: "); Serial.print(event.acceleration.z); Serial.println(" m/s^2");
+  Serial.println("---");
 }
 
 // i2s devices 
 // speaker
 // mic
+//add later
 
-
-// led
-#define LED_R 23
-#define LED_G 2
-#define LED_B 12
-
-void setupLed(){
-  pinMode(LED_R, OUTPUT);
-  pinMode(LED_G, OUTPUT);
-  pinMode(LED_B, OUTPUT);
-}
-void setLed(uint8_t r, uint8_t g, uint8_t b){
-  analogWrite(LED_R, r);
-  analogWrite(LED_G, g);
-  analogWrite(LED_B, b);
-}
 
 //rotary encoder
-#define RE_CLK 25
-#define RE_DT  5
-#define RE_SW  0
+#define RE_CLK 34
+#define RE_DT  35
 
 #define DIRECTION_CW  0
 #define DIRECTION_CCW 1
@@ -231,7 +247,6 @@ bool isRotating = false;
 void setupRotaryEncoder(){
   pinMode(RE_CLK, INPUT);
   pinMode(RE_DT, INPUT);
-  pinMode(RE_SW, INPUT_PULLUP);
   prev_CLK_state = digitalRead(RE_CLK);
   Serial.println("[ENCODER] - OK");
 }
@@ -252,7 +267,6 @@ void readRotaryEncoder(){
   }
 
   prev_CLK_state = CLK_state;
-  isButtonDown = (digitalRead(RE_SW) == 0);
 
   
 }
@@ -350,6 +364,102 @@ void setupDisplay(){
   display.drawBitmap(0, 0, splash, 84, 48, BLACK);
   display.display();
   delay(2000);
+}
+
+//VELA
+
+const unsigned char ico_vela [] PROGMEM = {
+	0x00, 0x00, 0x00, 0xff, 0xff, 0xc0, 0xff, 0xff, 0xc0, 0x00, 0x00, 0x00, 0xf3, 0xe3, 0xc0, 0x12, 
+	0x22, 0x00, 0xb2, 0xa2, 0x80, 0xbe, 0x7e, 0x80, 0xa2, 0xaa, 0x80, 0xae, 0xa2, 0x00, 0xe3, 0xeb, 
+	0xc0, 0x2e, 0x2a, 0x00, 0x22, 0x2a, 0x00, 0x3e, 0x3e, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xc0, 
+	0xff, 0xff, 0xc0, 0x00, 0x00, 0x00};
+
+//22x39
+const unsigned char candle [] PROGMEM = {
+	0x00, 0x30, 0x00, 0x00, 0x30, 0x00, 0x00, 0x30, 0x00, 0x7f, 0xff, 0xf8, 0x80, 0x00, 0x04, 0x80, 
+	0x00, 0x04, 0xb0, 0x80, 0x34, 0xaa, 0x82, 0x74, 0xa2, 0x42, 0x74, 0xa2, 0x43, 0x74, 0xa0, 0x43, 
+	0xf4, 0xa0, 0x43, 0xf4, 0xa0, 0x43, 0xf4, 0xc1, 0x47, 0xf4, 0x41, 0x47, 0xf4, 0x40, 0x87, 0xf4, 
+	0x40, 0x0f, 0xf4, 0x40, 0x0f, 0xf8, 0x40, 0x0f, 0xf8, 0x40, 0x0f, 0xf4, 0x40, 0x0f, 0xf8, 0x80, 
+	0x0f, 0xf8, 0x80, 0x1f, 0xf8, 0x40, 0x1f, 0xf8, 0x40, 0x1f, 0xf8, 0x40, 0x1f, 0xf8, 0x40, 0x1f, 
+	0xf8, 0x40, 0x1f, 0xf8, 0x40, 0x1f, 0xf8, 0x40, 0x1f, 0xf8, 0x40, 0x1f, 0xf8, 0x40, 0x1f, 0xf8, 
+	0x40, 0x1f, 0xf8, 0x70, 0x1f, 0xf8, 0x7c, 0x1f, 0xf8, 0x7f, 0x1f, 0xf0, 0x1f, 0xff, 0xc0, 0x07, 
+	0xff, 0x00, 0x00, 0xfc, 0x00
+};
+
+//10x10
+const unsigned char flame [] PROGMEM = {
+	0x0c, 0x00, 0x12, 0x00, 0x15, 0x00, 0x2e, 0x80, 0x5e, 0x80, 0x5e, 0x80, 0xbf, 0x40, 0x9e, 0x40, 
+	0x6c, 0x80, 0x1f, 0x00
+};
+
+//27x39px
+const unsigned char handlighter [] PROGMEM = {
+	0x40, 0x00, 0x00, 0x00, 0x45, 0x00, 0x00, 0x00, 0xe1, 0x00, 0x00, 0x00, 0xb8, 0x00, 0x00, 0x00, 
+	0x8f, 0x83, 0xe0, 0x00, 0x88, 0xcc, 0x30, 0x00, 0xe7, 0x48, 0x10, 0x00, 0x3b, 0x50, 0x10, 0x00, 
+	0x0b, 0x5f, 0x88, 0x00, 0x0b, 0x71, 0xc8, 0x00, 0x09, 0xe7, 0xe8, 0x00, 0x0f, 0xe3, 0xc8, 0x00, 
+	0x01, 0xc1, 0xe4, 0x00, 0x0f, 0xe1, 0xe4, 0x00, 0x0f, 0xe0, 0xf4, 0x00, 0x07, 0xf0, 0x74, 0x00, 
+	0x03, 0xf0, 0x3e, 0x00, 0x01, 0xff, 0x9e, 0x00, 0x00, 0xe1, 0xce, 0x00, 0x01, 0xc0, 0x47, 0x00, 
+	0x01, 0x80, 0x63, 0x00, 0x03, 0x07, 0xf1, 0x80, 0x05, 0x8f, 0xf8, 0xc0, 0x0c, 0xbc, 0x3c, 0x60, 
+	0x0c, 0x70, 0x3e, 0x20, 0x0d, 0xe0, 0x3f, 0x20, 0x07, 0xc0, 0xff, 0xe0, 0x07, 0x31, 0xcf, 0xc0, 
+	0x06, 0x13, 0x8f, 0x00, 0x06, 0x0e, 0x08, 0x00, 0x03, 0x1c, 0x18, 0x00, 0x03, 0x78, 0x3c, 0x00, 
+	0x03, 0xf8, 0xe4, 0x00, 0x01, 0xe1, 0xc4, 0x00, 0x01, 0xe7, 0x04, 0x00, 0x00, 0xfe, 0x08, 0x00, 
+	0x00, 0x78, 0x18, 0x00, 0x00, 0x7f, 0x60, 0x00, 0x00, 0x3f, 0xc0, 0x00
+};
+
+int handX = 60;
+int handY = 30;
+int handW = 27;
+int handH = 39;
+
+bool isLit = false;
+
+void drawVela(){
+  display.clearDisplay();
+  display.drawBitmap(30, 20, candle, 22, 39, BLACK);
+  if(isLit) display.drawBitmap(36, 10, flame, 10, 10, BLACK);
+  display.drawBitmap(handX, handY, handlighter, handW, handH, BLACK);
+  display.display();
+}
+
+void setupVela(){
+  display.invertDisplay(true);
+  drawVela();
+}
+void lightUp(){
+  isLit = true;
+  display.invertDisplay(false);
+  display.display();
+  delay(400);
+  display.invertDisplay(true);
+  display.display();
+  delay(400);
+  display.invertDisplay(false);
+  display.display();
+  
+  display.drawBitmap(36, 10, flame, 10, 10, BLACK);
+  display.display();
+}
+
+void loopVela(){
+  if(key){
+    int oldHandY = handY;
+    int oldHandX = handX;
+    if(key == '2')handY -= 2;
+    if(key == '8')handY += 2;
+    if(key == '6')handX += 2;
+    if(key == '4')handX -= 2;
+
+    if(oldHandX != handX || oldHandY != handY){
+      drawVela();
+    }
+    
+    if(
+      (handX >= 32 && handX <= 43) && (handY >= 8 && handY <= 22) 
+      && key == '5' 
+      && !isLit){
+      lightUp();
+    }
+  }
 }
 
 //TERMO
@@ -982,11 +1092,11 @@ void setup()   {
   activities.push_back({ "HOME", setupHome, loopHome, ico_home});
   activities.push_back({ "NOTAS", setupNotas, loopNotas, ico_notas});
   activities.push_back({ "TERMO", setupTermo, loopTermo, ico_termo});
+  activities.push_back({ "VELA", setupVela, loopVela, ico_vela});
 
   Serial.println("Setting up peripherals");
 
-  // setupLed();
-  //setupGyro();
+  setupGyro();
   setupRotaryEncoder();
   //setupSD();
   setupDisplay();
@@ -998,6 +1108,6 @@ void loop(){
   currentTime = millis();
   readKeyBoard();
   readRotaryEncoder();
-  // //readGyro();
+  readGyro();
   if(curActivity) curActivity->pLoop();
 }
