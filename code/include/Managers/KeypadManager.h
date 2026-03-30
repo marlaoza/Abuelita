@@ -41,10 +41,10 @@ class KeyPadManager {
         char readKey();
         void resetKeyPadVariables();
         String readRawText();
+        String readSentText();
         void setMode(byte mode);
         int maxDigits;
         int minDigits;
-        String sentText;
 
     private:
         KeyPadManager();
@@ -54,6 +54,7 @@ class KeyPadManager {
         int _charIndex;
         char _curChar;
         String _inputText;
+        String _sentText;
         byte _mode;
         Keypad _keypad;
         

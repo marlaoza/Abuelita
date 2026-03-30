@@ -3,10 +3,7 @@
 
 #include <Arduino.h>
 
-unsigned long currentTime = 0;
+extern unsigned long currentTime;
 
-void updateSystemData(){
-    currentTime = millis();
-}
-
+void updateSystemData();
 #endif

@@ -10,6 +10,7 @@ KeyPadManager::KeyPadManager() : _keypad(makeKeymap(hexaKeys), rowPins, colPins,
 
 KeyPadManager::~KeyPadManager(){}
 
+
 void KeyPadManager::readKeyPad(){
     char key = _keypad.getKey();
     if(key){
@@ -18,7 +19,7 @@ void KeyPadManager::readKeyPad(){
             {
                 case 'B':
                     if(this->_inputText.length() >= this->minDigits){
-                        sentText = this->_inputText;
+                        this->_sentText = this->_inputText;
                         this->_inputText = "";
                         this->_lastPressTime = currentTime;
                     }
@@ -74,14 +75,18 @@ void KeyPadManager::resetKeyPadVariables(){
     this->maxDigits = -1;
     this->minDigits = 0;
     this->_inputText = "";
-    this->sentText = "";
+    this->_sentText = "";
     this->_curChar = '\0';
     this->_charIndex = 0;
     this->_lastKey = '\0';
 }
 
-String KeyPadManager::readRawText(){return _inputText;}
-
+String KeyPadManager::readRawText(){return _inputText + _curChar;}
+String KeyPadManager::readSentText(){
+    String tr = this->_sentText;
+    this->_sentText = "";
+    return tr;
+}
 void KeyPadManager::setMode(byte mode){
     if(mode == WRITE_MODE || mode == PRESS_MODE) this->_mode = mode;
 }

@@ -3,24 +3,26 @@
 #include "Managers/DisplayManager.h"
 #include "Managers/KeyPadManager.h"
 #include "SystemData.h"
+
 #include "Activities/Menu.h"
+#include "Activities/Notes.h"
 
 //MANAGERS
-ActivityManager& activity;
-KeyPadManager& keypad;
-DisplayManager& display;
+ActivityManager& activity = ActivityManager::getInstance();
+KeyPadManager& keypad = KeyPadManager::getInstance();
+DisplayManager& display = DisplayManager::getInstance();
 
 //APPS
 Menu* MenuAPP = new Menu();
+Notes* NotesAPP = new Notes();
 
 
 void setup() {
     Serial.begin(115200);
-    activity = ActivityManager::getInstance();
-    keypad = KeyPadManager::getInstance();
-    display = DisplayManager::getInstance();
 
     activity.registerActivity(MenuAPP);
+    activity.registerActivity(NotesAPP);
+    
     activity.setActivity(0);
 }
 

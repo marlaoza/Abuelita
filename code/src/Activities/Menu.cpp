@@ -7,6 +7,7 @@ Menu::Menu()
       keyPadManager(KeyPadManager::getInstance()), displayManager(DisplayManager::getInstance()) {}
 
 void Menu::setup() {
+   displayManager.screen.clearDisplay();
    selectedApp = 0;
    appsPerRow = 3;
    drawMenu();

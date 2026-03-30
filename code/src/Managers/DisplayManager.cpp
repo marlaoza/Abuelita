@@ -13,6 +13,7 @@ DisplayManager::DisplayManager() : screen(Adafruit_PCD8544(DISPLAY_CLK, DISPLAY_
   screen.setCursor(0, 0);
   screen.drawBitmap(0, 0, splash_screen, 84, 48, BLACK);
   screen.display();
+  delay(2000);
 }
 
 DisplayManager::~DisplayManager(){}
