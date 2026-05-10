@@ -4,7 +4,7 @@
 
 Menu::Menu() 
     : Activity(ico_home),activityManager(ActivityManager::getInstance()), 
-      keyPadManager(KeyPadManager::getInstance()), displayManager(DisplayManager::getInstance()) {}
+      inputManager(InputManager::getInstance()), displayManager(DisplayManager::getInstance()) {}
 
 void Menu::setup() {
    displayManager.screen.clearDisplay();
@@ -29,7 +29,7 @@ void Menu::drawMenu () {
         Xpos = (((i-1) % appsPerRow)*23) + xOffset;
         Ypos = (floor((i-1)/appsPerRow)*24) + yOffset;
         displayManager.screen.drawRect(Xpos, Ypos, 20, 20, BLACK);
-        displayManager.screen.drawBitmap(Xpos+1, Ypos+1, activityManager.getActivities()[i]->icon, 18, 18, BLACK);
+        displayManager.screen.drawBitmap(Xpos+1, Ypos+1, activityManager.getActivity(i)->icon, 18, 18, BLACK);
 
         if(selectedApp == i){
             displayManager.screen.drawRect(Xpos-1, Ypos-1, 22, 22, BLACK);
@@ -40,7 +40,7 @@ void Menu::drawMenu () {
 }
 
 void Menu::loop() {
-    char key = keyPadManager.readKey();
+    char key = inputManager.readKey();
     if(key){
         switch(key){
             case '2':if(selectedApp >= appsPerRow) selectedApp -= appsPerRow;

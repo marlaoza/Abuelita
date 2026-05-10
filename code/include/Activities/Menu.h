@@ -2,15 +2,15 @@
 #define ACTIVITY_MENU_H
 #include "Activity.h"
 #include <Managers/ActivityManager.h>
-#include <Managers/KeypadManager.h>
+#include <Managers/InputManager.h>
 #include <Managers/DisplayManager.h>
 
 class Menu : public Activity {
 private:
     int selectedApp;
-    int appsPerRow;
+    uint8_t appsPerRow;
     ActivityManager& activityManager;
-    KeyPadManager& keyPadManager;
+    InputManager& inputManager;
     DisplayManager& displayManager;
    
 public:

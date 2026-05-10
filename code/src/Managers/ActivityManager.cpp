@@ -24,6 +24,11 @@ Activity** ActivityManager::getActivities(){
     return this->_activities;
 }
 
+Activity* ActivityManager::getActivity(int index){
+    return this->_activities[index];
+}
+
+
 int ActivityManager::getActivitiesCount(){
     return this->_activitiesCount;
 }

@@ -1,17 +1,17 @@
 #ifndef ACTIVITY_NOTES_H
 #define ACTIVITY_NOTES_H
 #include "Activity.h"
-#include <Managers/KeypadManager.h>
+#include <Managers/InputManager.h>
 #include <Managers/DisplayManager.h>
 #include <vector>
 
-
 typedef struct note {
+  int id;
   String name;
   String text;
 };
 
-std::vector<note> notes;
+extern std::vector<note> notesList;
 
 class Notes : public Activity {
 private:
@@ -21,11 +21,11 @@ private:
     int hoveredNota;
     int selectedNota;
     bool onNewNota;
-    int hoverNewNotaItem;
+    uint8_t hoverNewNotaItem;
     bool onInput;
     String noteName;
     int lastHoveredNota;
-    KeyPadManager& keyPadManager;
+    InputManager& inputManager;
     DisplayManager& displayManager;
    
 public:

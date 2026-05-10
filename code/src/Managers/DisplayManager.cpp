@@ -5,6 +5,10 @@
 DisplayManager& DisplayManager::getInstance() {static DisplayManager instance; return instance;}
 
 DisplayManager::DisplayManager() : screen(Adafruit_PCD8544(DISPLAY_CLK, DISPLAY_DIN, DISPLAY_DC, DISPLAY_CE, DISPLAY_RST)){
+  
+}
+
+void DisplayManager::Splash(){
   screen.begin();
   screen.setContrast(90);
   screen.clearDisplay();

@@ -1,5 +1,5 @@
-#ifndef KEYPAD_MANAGER_H
-#define KEYPAD_MANAGER_H
+#ifndef INPUT_MANAGER_H
+#define INPUT_MANAGER_H
 
 #include <Arduino.h>
 #include "Constants.h"
@@ -33,9 +33,13 @@ static byte colPins[COLS] = {KEYPAD_C1, KEYPAD_C2, KEYPAD_C3, KEYPAD_C4};
 #define WRITE_MODE 0
 #define PRESS_MODE 1
 
-class KeyPadManager {
+#define DIRECTION_NONE 0
+#define DIRECTION_CW 1
+#define DIRECTION_CCW 2
+
+class InputManager {
     public:
-        static KeyPadManager& getInstance();
+        static InputManager& getInstance();
         void readKeyPad();
         bool getKey(char key);
         char readKey();
@@ -43,20 +47,26 @@ class KeyPadManager {
         String readRawText();
         String readSentText();
         void setMode(byte mode);
-        int maxDigits;
-        int minDigits;
+        uint8_t maxDigits;
+        uint8_t minDigits;
+        static volatile uint8_t encoderDirection;
 
     private:
-        KeyPadManager();
-        ~KeyPadManager();
+        InputManager();
+        ~InputManager();
+        void handleREInterrupt();
+        void handleKeyPadInterrupt();
         unsigned long _lastPressTime;
+        char _key;
         char _lastKey;
-        int _charIndex;
+        uint8_t _charIndex;
         char _curChar;
         String _inputText;
         String _sentText;
         byte _mode;
         Keypad _keypad;
+        uint8_t _CLK_state;
+        uint8_t _prev_CLK_state;
         
 };
 

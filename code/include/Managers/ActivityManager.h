@@ -13,6 +13,7 @@ class ActivityManager {
         void loopActivity();
         void registerActivity(Activity* activity);
         Activity** getActivities();
+        Activity* getActivity(int index);
         int getActivitiesCount();
         Activity* curActivity;
 

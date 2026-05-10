@@ -1,24 +1,48 @@
 #include "Activities/Notes.h"
 #include "Assets.h"
+#include <FS.h>
+#include <LittleFS.h> 
+#include <ArduinoJson.h> 
+
+std::vector<note> notesList;
 
 Notes::Notes() 
     : Activity(ico_notes), 
-      keyPadManager(KeyPadManager::getInstance()), displayManager(DisplayManager::getInstance()) {}
+      inputManager(InputManager::getInstance()), displayManager(DisplayManager::getInstance()) {}
 
 void Notes::setup() {
+
+
     displayManager.screen.clearDisplay();
-    notes.push_back({ "nota0", "" });
-    notes.push_back({ "nota1", "" });
-    notes.push_back({ "nota2", "" });
-    notes.push_back({ "nota3", "" });
-    notes.push_back({ "nota4", "" });
-    notes.push_back({ "nota5", "" });
-    notes.push_back({ "nota6", "" });
-    notes.push_back({ "nota7", "" });
-    notes.push_back({ "nota8", "" });
-    notes.push_back({ "nota9", "" });
-    notes.push_back({ "nota10", "" });
-    keyPadManager.resetKeyPadVariables();
+    notesList.clear();
+
+    if (!LittleFS.exists("/notes")) {
+        bool ok = LittleFS.mkdir("/notes");
+        if (!ok) {
+            Serial.println("mkdir failed, formatting...");
+            LittleFS.format();
+            LittleFS.begin();
+            LittleFS.mkdir("/notes");
+        }
+    }
+    File dir = LittleFS.open("/notes");
+    if (dir && dir.isDirectory()) {
+       File file = dir.openNextFile();
+      while (file) {
+          if (!file.isDirectory()) {
+              StaticJsonDocument<512> doc;
+              deserializeJson(doc, file);
+              notesList.push_back({
+                  doc["id"].as<int>(),
+                  doc["name"].as<String>(),
+                  doc["text"].as<String>()
+              });
+          }
+          file = dir.openNextFile();
+      }
+    };
+
+    inputManager.resetKeyPadVariables();
     onMenu = true;
     openNote = nullptr;
     fixedOffset = 0;
@@ -32,17 +56,39 @@ void Notes::setup() {
  
 }
 
+void saveNote(note note) {
+   if (note.id == 0) note.id = notesList.size() + 1;
+   
+    Serial.println(note.id);
+    Serial.println(note.text);
+
+    File f = LittleFS.open(String("/notes") + "/" + String(note.id) + ".json", "w");
+    if (!f) return;
+
+    StaticJsonDocument<512> doc;
+    doc["id"]   = note.id;
+    doc["name"] = note.name;
+    doc["text"] = note.text;
+    serializeJson(doc, f);
+    f.close();
+
+    for (auto& n : notesList) {
+        if (n.id == note.id) { n = note; return; }
+    }
+    notesList.push_back(note);
+}
+
 void Notes::loop() {
-    char key = keyPadManager.readKey();
+    char key = inputManager.readKey();
    if(onMenu){
       if(key){
         if(onInput && onNewNota){
-          noteName = keyPadManager.readRawText();
-          if(key == 'B'){
+          noteName = inputManager.readRawText();
+          if(key == 'F'){
             onInput = false;
-            keyPadManager.setMode(PRESS_MODE);
-            keyPadManager.maxDigits = -1;
-            noteName = keyPadManager.readSentText();
+            inputManager.setMode(PRESS_MODE);
+            inputManager.maxDigits = -1;
+            noteName = inputManager.readSentText();
             
           }
         }else{
@@ -52,7 +98,7 @@ void Notes::loop() {
               else{hoverNewNotaItem = hoverNewNotaItem == 1 ? 0 : 1;}
               break;
             case '8':
-              if(!onNewNota){if(hoveredNota < (notes.size()) - 1){ hoveredNota += 1;}}
+              if(!onNewNota){if(hoveredNota < (notesList.size()) - 1){ hoveredNota += 1;}}
               else{hoverNewNotaItem = hoverNewNotaItem == 0 ? 1 : 0;}
               break;
             case '6':
@@ -65,12 +111,12 @@ void Notes::loop() {
               if(!onNewNota){selectNote(hoveredNota);}
               if(onNewNota){
                 if(hoverNewNotaItem == 1){
-                  notes.push_back({noteName, "" });
-                  selectNote(notes.size()-1);
+                  saveNote({0, noteName, ""});
+                  selectNote(notesList.size()-1);
                 }else if(hoverNewNotaItem == 0){
                   if(!onInput){
-                    keyPadManager.resetKeyPadVariables();
-                    keyPadManager.maxDigits = 5;
+                    inputManager.resetKeyPadVariables();
+                    inputManager.maxDigits = 5;
                     onInput = true;
                     
                   };
@@ -83,16 +129,18 @@ void Notes::loop() {
       }
     }else{
       if(key == 'F'){
-        if(keyPadManager.readRawText().length() <= 0){
+        if(inputManager.readRawText().length() <= 0){
           if(openNote->text.length() > 0){
             openNote->text.remove(openNote->text.length() - 1);
           }
         }
       }
       if(key == 'B'){
-        openNote->text += (keyPadManager.readSentText() + "\n");
+        openNote->text += (inputManager.readSentText() + "\n");
       }
       if(key == 'Z'){
+        openNote->text += inputManager.readRawText();
+        saveNote(*openNote);
         onMenu = true;
         drawNotesMenu();
         return;
@@ -111,8 +159,9 @@ void Notes::loop() {
 }
 
 void Notes::stop() {
+    notesList.clear();
     displayManager.screen.clearDisplay();
-    keyPadManager.resetKeyPadVariables();
+    inputManager.resetKeyPadVariables();
     onMenu = true;
     openNote = nullptr;
     fixedOffset = 0;
@@ -137,11 +186,10 @@ void Notes::drawNotesMenu() {
     int height = 11;
     
     if((hoveredNota*(height+1)) + yOffset + height > 44) {
-        Serial.println("fora");
         yOffset -= (((hoveredNota*(height+1)) + yOffset + height) - 44);
     }
 
-    for (int i = 0; i < notes.size(); i++){
+    for (int i = 0; i < notesList.size(); i++){
         Xpos = xOffset;
         Ypos = (i*(height+1)) + yOffset;
         displayManager.screen.setTextColor(BLACK);
@@ -153,7 +201,7 @@ void Notes::drawNotesMenu() {
         }
 
         displayManager.screen.setCursor(Xpos+2, Ypos+2);
-        displayManager.screen.print(notes[i].name);
+        displayManager.screen.print(notesList[i].name);
     }
 
     displayManager.screen.setTextColor(BLACK);
@@ -174,7 +222,7 @@ void Notes::drawNotesMenu() {
 
 void Notes::drawNote(){
     displayManager.screen.clearDisplay();
-    String txt = openNote->text + keyPadManager.readRawText();
+    String txt = openNote->text + inputManager.readRawText();
     int offset = (txt.length() - 56);
     offset = offset < 0 ? 0 : ceil((offset + 0.5) / 14);
 
@@ -198,8 +246,8 @@ void Notes::drawNote(){
 }
 
 void Notes::selectNote(int id){
-    openNote = &notes[id];
+    openNote = &notesList[id];
     onMenu = false;
-    keyPadManager.resetKeyPadVariables();
+    inputManager.resetKeyPadVariables();
     drawNote();
 }
