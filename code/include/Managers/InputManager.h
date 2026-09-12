@@ -41,7 +41,6 @@ static byte colPins[COLS] = {KEYPAD_C1, KEYPAD_C2, KEYPAD_C3, KEYPAD_C4};
 class InputManager {
     public:
         static InputManager& getInstance();
-        void readKeyPad();
         void update();
         bool getKey(char key);
         char readKey();
@@ -51,14 +50,13 @@ class InputManager {
         void setMode(byte mode);
         uint8_t maxDigits;
         uint8_t minDigits;
-        static volatile uint8_t encoderDirection;
         std::queue<int8_t> rotationQueue;
         bool rotationOn;
 
     private:
         InputManager();
         ~InputManager();
-        void handleKeyPadInterrupt();
+        void readKeyPad();
         unsigned long _lastPressTime;
         char _key;
         char _lastKey;

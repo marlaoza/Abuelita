@@ -1,11 +1,9 @@
 #ifndef ACTIVITY_NOTES_H
 #define ACTIVITY_NOTES_H
 #include "Activity.h"
-#include <Managers/InputManager.h>
-#include <Managers/DisplayManager.h>
 #include <vector>
 
-typedef struct note {
+struct note {
   int id;
   String name;
   String text;
@@ -25,8 +23,6 @@ private:
     bool onInput;
     String noteName;
     int lastHoveredNota;
-    InputManager& inputManager;
-    DisplayManager& displayManager;
     int scroll;
    
 public:

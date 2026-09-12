@@ -10,8 +10,6 @@ private:
     int selectedApp;
     uint8_t appsPerRow;
     ActivityManager& activityManager;
-    InputManager& inputManager;
-    DisplayManager& displayManager;
    
 public:
     Menu();

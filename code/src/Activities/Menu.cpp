@@ -3,8 +3,7 @@
 #include <Adafruit_PCD8544.h>
 
 Menu::Menu() 
-    : Activity(ico_home),activityManager(ActivityManager::getInstance()), 
-      inputManager(InputManager::getInstance()), displayManager(DisplayManager::getInstance()) {}
+    : Activity(ico_home),activityManager(ActivityManager::getInstance()) {}
 
 void Menu::setup() {
    displayManager.screen.clearDisplay();

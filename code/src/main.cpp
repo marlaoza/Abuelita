@@ -8,6 +8,7 @@
 #include "Activities/Menu.h"
 #include "Activities/Notes.h"
 #include <LittleFS.h>
+#include <Activities/Termo.h>
 
 //MANAGERS
 ActivityManager& activity = ActivityManager::getInstance();
@@ -18,6 +19,7 @@ AudioManager& audio = AudioManager::getInstance();
 //APPS
 Menu* MenuAPP = new Menu();
 Notes* NotesAPP = new Notes();
+Termo* TermoAPP = new Termo();
 
 
 void setup() {
@@ -31,6 +33,7 @@ void setup() {
 
     activity.registerActivity(MenuAPP);
     activity.registerActivity(NotesAPP);
+    activity.registerActivity(TermoAPP);
     
     activity.setActivity(0);
 }

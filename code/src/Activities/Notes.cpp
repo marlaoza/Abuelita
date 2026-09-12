@@ -7,8 +7,7 @@
 std::vector<note> notesList;
 
 Notes::Notes() 
-    : Activity(ico_notes), 
-      inputManager(InputManager::getInstance()), displayManager(DisplayManager::getInstance()) {}
+    : Activity(ico_notes) {}
 
 void Notes::setup() {
     this->scroll = 0;
