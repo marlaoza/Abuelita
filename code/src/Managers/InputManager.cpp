@@ -5,24 +5,39 @@
 
 InputManager& InputManager::getInstance() {static InputManager instance; return instance;}
 
+
 InputManager::InputManager() : _keypad(makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS){
+    Serial.println("keypad - on");
+    rotationOn = false;
     this->resetKeyPadVariables();
-    pinMode(RE_CLK, INPUT);
-    pinMode(RE_DT, INPUT);
+    pinMode(RE_CLK, INPUT_PULLUP);
+    pinMode(RE_DT, INPUT_PULLUP);
     this->_prev_CLK_state = digitalRead(RE_CLK);
-    // attachInterrupt(digitalPinToInterrupt(RE_CLK), handleREInterrupt, CHANGE);
 }
 
-void InputManager::handleREInterrupt(){
-    if(digitalRead(RE_CLK) == digitalRead(RE_DT)){
-        Serial.println("clock");
-    }else{
-        Serial.println("counter clock");
-    }
-}
 
 InputManager::~InputManager(){}
 
+
+void InputManager::update(){
+    if(rotationOn){
+        static int last_clk_state = digitalRead(RE_CLK);
+        int current_clk_state = digitalRead(RE_CLK);
+
+        if (current_clk_state != last_clk_state) {
+            if (digitalRead(RE_DT) != current_clk_state) {
+                rotationQueue.push(1);
+
+            } else {
+                rotationQueue.push(-1);
+            }
+        }else{
+        }
+        last_clk_state = current_clk_state;
+    }
+
+    readKeyPad();
+}
 
 void InputManager::readKeyPad(){
     _key = _keypad.getKey();

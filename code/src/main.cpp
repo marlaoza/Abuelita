@@ -36,8 +36,7 @@ void setup() {
 }
 
 void loop() {
-    
     updateSystemData();
-    input.readKeyPad();
+    input.update();
     activity.loopActivity();
 }

@@ -5,6 +5,7 @@
 #include "Constants.h"
 #include <Keypad.h>
 #include <PinConfig.h>
+#include <queue>
 
 static const char t9Map[10][5] = {
   " ",
@@ -41,6 +42,7 @@ class InputManager {
     public:
         static InputManager& getInstance();
         void readKeyPad();
+        void update();
         bool getKey(char key);
         char readKey();
         void resetKeyPadVariables();
@@ -50,11 +52,12 @@ class InputManager {
         uint8_t maxDigits;
         uint8_t minDigits;
         static volatile uint8_t encoderDirection;
+        std::queue<int8_t> rotationQueue;
+        bool rotationOn;
 
     private:
         InputManager();
         ~InputManager();
-        void handleREInterrupt();
         void handleKeyPadInterrupt();
         unsigned long _lastPressTime;
         char _key;

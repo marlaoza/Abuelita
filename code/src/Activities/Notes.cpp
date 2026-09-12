@@ -11,8 +11,8 @@ Notes::Notes()
       inputManager(InputManager::getInstance()), displayManager(DisplayManager::getInstance()) {}
 
 void Notes::setup() {
-
-
+    this->scroll = 0;
+    inputManager.rotationOn = true;
     displayManager.screen.clearDisplay();
     notesList.clear();
 
@@ -30,7 +30,7 @@ void Notes::setup() {
        File file = dir.openNextFile();
       while (file) {
           if (!file.isDirectory()) {
-              StaticJsonDocument<512> doc;
+              JsonDocument doc;
               deserializeJson(doc, file);
               notesList.push_back({
                   doc["id"].as<int>(),
@@ -65,7 +65,7 @@ void saveNote(note note) {
     File f = LittleFS.open(String("/notes") + "/" + String(note.id) + ".json", "w");
     if (!f) return;
 
-    StaticJsonDocument<512> doc;
+    JsonDocument doc;
     doc["id"]   = note.id;
     doc["name"] = note.name;
     doc["text"] = note.text;
@@ -80,6 +80,11 @@ void saveNote(note note) {
 
 void Notes::loop() {
     char key = inputManager.readKey();
+    for (; !inputManager.rotationQueue.empty(); inputManager.rotationQueue.pop()) {
+      int val =  inputManager.rotationQueue.front();
+      if(!onMenu){scroll += (val * 2); }
+      if(scroll < 0) scroll = 0;
+    }
    if(onMenu){
       if(key){
         if(onInput && onNewNota){
@@ -162,6 +167,7 @@ void Notes::stop() {
     notesList.clear();
     displayManager.screen.clearDisplay();
     inputManager.resetKeyPadVariables();
+    inputManager.rotationOn = false;
     onMenu = true;
     openNote = nullptr;
     fixedOffset = 0;
@@ -224,6 +230,7 @@ void Notes::drawNote(){
     displayManager.screen.clearDisplay();
     String txt = openNote->text + inputManager.readRawText();
     int offset = (txt.length() - 56);
+    offset += scroll;
     offset = offset < 0 ? 0 : ceil((offset + 0.5) / 14);
 
     displayManager.screen.setTextColor(BLACK);
@@ -249,5 +256,6 @@ void Notes::selectNote(int id){
     openNote = &notesList[id];
     onMenu = false;
     inputManager.resetKeyPadVariables();
+    scroll = 0;
     drawNote();
 }

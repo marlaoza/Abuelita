@@ -27,6 +27,7 @@ private:
     int lastHoveredNota;
     InputManager& inputManager;
     DisplayManager& displayManager;
+    int scroll;
    
 public:
     Notes();
